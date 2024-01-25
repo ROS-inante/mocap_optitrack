@@ -1,4 +1,5 @@
 /* 
+ * Copyright (c) 2023, Alexander Junk
  * Copyright (c) 2018, Houston Mechatronics Inc., JD Yamokoski
  * Copyright (c) 2012, Clearpath Robotics, Inc., Alex Bencz
  * All rights reserved.
@@ -61,11 +62,13 @@ struct PublisherConfiguration
   int rigidBodyId;
   std::string poseTopicName;
   std::string pose2dTopicName;
+  std::string odomTopicName;
   std::string childFrameId;
   std::string parentFrameId;
 
   bool publishPose;
   bool publishPose2d;
+  bool publishOdom;
   bool publishTf;
 };
 

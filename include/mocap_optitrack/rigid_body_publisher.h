@@ -1,4 +1,5 @@
 /* 
+ * Copyright (c) 2023, Alexander Junk
  * Copyright (c) 2018, Houston Mechatronics Inc., JD Yamokoski
  * Copyright (c) 2012, Clearpath Robotics, Inc., Alex Bencz
  * All rights reserved.
@@ -40,6 +41,7 @@
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose2_d.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 
 #include <mocap_optitrack/version.h>
 #include <mocap_optitrack/data_model.h>
@@ -64,6 +66,8 @@ private:
   bool useNewCoordinates;
 
   tf2_ros::TransformBroadcaster tfPublisher;
+  
+  std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> odometry_publisher_ = nullptr;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr posePublisher;
   rclcpp::Publisher<geometry_msgs::msg::Pose2D>::SharedPtr pose2dPublisher;
 };

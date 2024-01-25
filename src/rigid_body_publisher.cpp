@@ -1,4 +1,5 @@
 /* 
+ * Copyright (c) 2023, Alexander Junk
  * Copyright (c) 2018, Houston Mechatronics Inc., JD Yamokoski
  * Copyright (c) 2012, Clearpath Robotics, Inc., Alex Bencz
  * All rights reserved.
@@ -45,13 +46,13 @@ namespace utilities
     if (newCoordinates)
     {
       // Motive 1.7+ coordinate system
-      poseStampedMsg.pose.position.x = -body.pose.position.x;
-      poseStampedMsg.pose.position.y = body.pose.position.z;
-      poseStampedMsg.pose.position.z = body.pose.position.y;
+      poseStampedMsg.pose.position.x = body.pose.position.x;
+      poseStampedMsg.pose.position.y = body.pose.position.y;
+      poseStampedMsg.pose.position.z = body.pose.position.z;
   
-      poseStampedMsg.pose.orientation.x = -body.pose.orientation.x;
-      poseStampedMsg.pose.orientation.y = body.pose.orientation.z;
-      poseStampedMsg.pose.orientation.z = body.pose.orientation.y;
+      poseStampedMsg.pose.orientation.x = body.pose.orientation.x;
+      poseStampedMsg.pose.orientation.y = body.pose.orientation.y;
+      poseStampedMsg.pose.orientation.z = body.pose.orientation.z;
       poseStampedMsg.pose.orientation.w = body.pose.orientation.w;
     }
     else
@@ -66,6 +67,7 @@ namespace utilities
       poseStampedMsg.pose.orientation.z = body.pose.orientation.y;
       poseStampedMsg.pose.orientation.w = body.pose.orientation.w;
     }
+
     return poseStampedMsg;
   }   
 }
@@ -80,6 +82,9 @@ RigidBodyPublisher::RigidBodyPublisher(rclcpp::Node::SharedPtr &node,
 
   if (config.publishPose2d)
     pose2dPublisher = node->create_publisher<geometry_msgs::msg::Pose2D>(config.pose2dTopicName, 1000);
+
+  if (config.publishOdom)
+    odometry_publisher_ = node->create_publisher<nav_msgs::msg::Odometry>(config.odomTopicName, rclcpp::SystemDefaultsQoS());
 
   // Motive 1.7+ uses a new coordinate system
   useNewCoordinates = (natNetVersion >= Version("1.7"));
@@ -126,6 +131,42 @@ void RigidBodyPublisher::publish(rclcpp::Time const& time, RigidBody const& body
     pose2d.y = pose.pose.position.y;
     pose2d.theta = tf2::getYaw(q);
     pose2dPublisher->publish(pose2d);
+  }
+
+  if (config.publishOdom)
+  {
+    nav_msgs::msg::Odometry odometry_message;
+
+    odometry_message.twist =
+        geometry_msgs::msg::TwistWithCovariance(rosidl_runtime_cpp::MessageInitialization::ALL);
+
+    odometry_message.header.frame_id = config.parentFrameId;
+    odometry_message.child_frame_id = config.childFrameId;
+
+    odometry_message.header.stamp = time;
+
+    odometry_message.pose.pose.position.x = pose.pose.position.x;
+    odometry_message.pose.pose.position.y = pose.pose.position.y;
+    odometry_message.pose.pose.position.z = pose.pose.position.z;
+    
+    odometry_message.pose.pose.orientation.x = pose.pose.orientation.x;
+    odometry_message.pose.pose.orientation.y = pose.pose.orientation.y;
+    odometry_message.pose.pose.orientation.z = pose.pose.orientation.z;
+    odometry_message.pose.pose.orientation.w = pose.pose.orientation.w;
+
+    std::array<double, 6> pose_covariance_diagonal{0};
+
+      constexpr size_t NUM_DIMENSIONS = 6;
+      for (size_t index = 0; index < 6; ++index)
+      {
+          // 0, 7, 14, 21, 28, 35
+          const size_t diagonal_index = NUM_DIMENSIONS * index + index;
+
+          odometry_message.pose.covariance[diagonal_index] = 
+              pose_covariance_diagonal[index];
+      }
+
+    odometry_publisher_->publish(odometry_message);
   }
 
   if (config.publishTf)

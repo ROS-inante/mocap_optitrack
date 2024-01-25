@@ -1,4 +1,5 @@
 /* 
+ * Copyright (c) 2023, Alexander Junk
  * Copyright (c) 2018, Houston Mechatronics Inc., JD Yamokoski
  * Copyright (c) 2012, Clearpath Robotics, Inc., Alex Bencz
  * All rights reserved.
@@ -35,7 +36,7 @@ namespace mocap_optitrack
 {
 // Server description defaults
 const int ServerDescription::Default::CommandPort = 1511;
-const int ServerDescription::Default::DataPort   = 9001;
+const int ServerDescription::Default::DataPort   = 9000;
 const std::string ServerDescription::Default::MulticastIpAddress = "224.0.0.251";
 
 // Param keys
@@ -50,8 +51,10 @@ namespace rosparam
     const std::string RigidBodies = "rigid_bodies";
     const std::string PoseTopicName = "pose";
     const std::string Pose2dTopicName = "pose2d";
+    const std::string OdomTopicName = "odom";
     const std::string ChildFrameId = "child_frame_id";
     const std::string ParentFrameId = "parent_frame_id";
+    const std::string PublishTF = "publish_tf";
   }
 }
 
@@ -157,6 +160,9 @@ void NodeConfiguration::fromRosParam(
     const bool readParentFrameId = node->get_parameter(
       prefix + "." + rosparam::keys::ParentFrameId, publisherConfig.parentFrameId);
 
+    const bool publishTF = node->get_parameter(
+      prefix + "." + rosparam::keys::PublishTF, publisherConfig.publishTf);
+
     if (!readChildFrameId || !readParentFrameId)
     {
       if (!readChildFrameId)
@@ -175,7 +181,31 @@ void NodeConfiguration::fromRosParam(
     }
     else
     {
-      publisherConfig.publishTf = true;
+      publisherConfig.publishTf = false;
+    }
+
+    const bool readOdomTopicName = node->get_parameter(
+      prefix + "." + rosparam::keys::OdomTopicName, publisherConfig.odomTopicName);
+
+    if (!readOdomTopicName)
+    {
+      RCLCPP_WARN(node->get_logger(), 
+        "Failed to parse %s for body %d. Odometry publishing disabled.", 
+        rosparam::keys::OdomTopicName.c_str(), 
+        publisherConfig.rigidBodyId);
+
+      publisherConfig.publishOdom = false;
+    }else if(!readChildFrameId || !readParentFrameId){
+      RCLCPP_WARN(node->get_logger(), 
+        "Child or parent frame IDs missing  for body %d. Odometry publishing disabled.", 
+        rosparam::keys::PoseTopicName.c_str(), 
+        publisherConfig.rigidBodyId);
+
+      publisherConfig.publishOdom = false;
+    }
+    else
+    {
+      publisherConfig.publishOdom = true;
     }
 
     pubConfigs.push_back(publisherConfig);
